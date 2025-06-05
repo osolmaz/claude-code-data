@@ -14,15 +14,15 @@ interface ClaudeConfiguration {
   numStartups: number;
   autoUpdaterStatus: "enabled" | "disabled";
   verbose: boolean;
-  
+
   // User identity and onboarding
-  userID: string;                    // SHA-256 hash
+  userID: string; // SHA-256 hash
   hasCompletedOnboarding: boolean;
-  lastOnboardingVersion: string;     // Semantic version
-  
+  lastOnboardingVersion: string; // Semantic version
+
   // UI state tracking
   tipsHistory: Record<string, number>;
-  
+
   // Project configurations
   projects: Record<string, ProjectConfiguration>;
 }
@@ -37,7 +37,7 @@ interface TipsHistory {
   "todo-list": number;
   "ide-hotkey": number;
   "git-worktrees": number;
-  [key: string]: number;  // Extensible for future tips
+  [key: string]: number; // Extensible for future tips
 }
 ```
 
@@ -71,16 +71,16 @@ interface BaseMessage {
   // Core identification
   uuid: string;
   parentUuid: string | null;
-  
+
   // Message metadata
   type: MessageType;
-  timestamp: string;  // ISO 8601
-  
+  timestamp: string; // ISO 8601
+
   // Session context
   sessionId: string;
   userType: "external";
-  version: string;    // Claude Code version
-  
+  version: string; // Claude Code version
+
   // Execution context
   cwd: string;
   isSidechain: boolean;
@@ -179,13 +179,13 @@ interface ToolUseContentBlock {
 }
 
 // Tool-specific input types
-type ToolInput = 
+type ToolInput =
   | BashToolInput
   | ReadToolInput
   | EditToolInput
   | WriteToolInput
   | TodoToolInput
-  | Record<string, any>;  // Generic fallback
+  | Record<string, any>; // Generic fallback
 
 interface BashToolInput {
   command: string;
@@ -226,11 +226,11 @@ interface ToolUseResult {
   interrupted?: boolean;
   isImage?: boolean;
   sandbox?: boolean;
-  
+
   // File operation results
   type?: "text" | "image" | "binary";
   file?: FileResult;
-  
+
   // Todo operation results
   oldTodos?: TodoItem[];
   newTodos?: TodoItem[];
@@ -267,13 +267,13 @@ interface LocalSettings {
 }
 
 interface PermissionSettings {
-  allow: string[];  // Permission patterns like "Bash(find:*)"
-  deny: string[];   // Denial patterns
+  allow: string[]; // Permission patterns like "Bash(find:*)"
+  deny: string[]; // Denial patterns
 }
 
 // Permission pattern examples:
 // "Bash(find:*)" - Allow find commands
-// "Bash(ls:*)" - Allow ls commands  
+// "Bash(ls:*)" - Allow ls commands
 // "Bash(rm:*)" - Allow rm commands (dangerous)
 // "Read(/safe/path/*)" - Allow reading from safe paths only
 ```
@@ -284,7 +284,7 @@ interface PermissionSettings {
 interface IDELockFile {
   pid: number;
   workspaceFolders: string[];
-  ideName: string;          // "Cursor", "VSCode", etc.
+  ideName: string; // "Cursor", "VSCode", etc.
   transport: "ws" | "http"; // Communication protocol
 }
 ```
@@ -295,7 +295,7 @@ interface IDELockFile {
 interface StatsigEvaluation {
   source: "Network" | "Cache";
   data: StatsigData;
-  receivedAt: number;       // Unix timestamp
+  receivedAt: number; // Unix timestamp
   stableID: string;
   fullUserHash: string;
 }
@@ -391,9 +391,18 @@ const MessageSchema = {
     userType: { enum: ["external"] },
     version: { type: "string", pattern: "^\\d+\\.\\d+\\.\\d+$" },
     cwd: { type: "string" },
-    isSidechain: { type: "boolean" }
+    isSidechain: { type: "boolean" },
   },
-  required: ["uuid", "type", "timestamp", "sessionId", "userType", "version", "cwd", "isSidechain"]
+  required: [
+    "uuid",
+    "type",
+    "timestamp",
+    "sessionId",
+    "userType",
+    "version",
+    "cwd",
+    "isSidechain",
+  ],
 };
 
 const UserMessageSchema = {
@@ -410,18 +419,21 @@ const UserMessageSchema = {
             content: {
               oneOf: [
                 { type: "string" },
-                { type: "array", items: { $ref: "#/definitions/UserContentBlock" } }
-              ]
-            }
+                {
+                  type: "array",
+                  items: { $ref: "#/definitions/UserContentBlock" },
+                },
+              ],
+            },
           },
-          required: ["role", "content"]
+          required: ["role", "content"],
         },
         isMeta: { type: "boolean" },
-        toolUseResult: { $ref: "#/definitions/ToolUseResult" }
+        toolUseResult: { $ref: "#/definitions/ToolUseResult" },
       },
-      required: ["message"]
-    }
-  ]
+      required: ["message"],
+    },
+  ],
 };
 ```
 
@@ -441,21 +453,28 @@ function isSummaryMessage(entry: any): entry is SummaryMessage {
   return entry.type === "summary";
 }
 
-function isToolUseContent(content: AssistantContentBlock): content is ToolUseContentBlock {
+function isToolUseContent(
+  content: AssistantContentBlock,
+): content is ToolUseContentBlock {
   return content.type === "tool_use";
 }
 
-function isTextContent(content: AssistantContentBlock): content is TextContentBlock {
+function isTextContent(
+  content: AssistantContentBlock,
+): content is TextContentBlock {
   return content.type === "text";
 }
 
 // Utility functions
 function getConversationRoot(messages: BaseMessage[]): BaseMessage | null {
-  return messages.find(msg => msg.parentUuid === null) || null;
+  return messages.find((msg) => msg.parentUuid === null) || null;
 }
 
-function getMessageChildren(messages: BaseMessage[], parentUuid: string): BaseMessage[] {
-  return messages.filter(msg => msg.parentUuid === parentUuid);
+function getMessageChildren(
+  messages: BaseMessage[],
+  parentUuid: string,
+): BaseMessage[] {
+  return messages.filter((msg) => msg.parentUuid === parentUuid);
 }
 
 function buildConversationTree(messages: BaseMessage[]): ConversationNode {
@@ -476,13 +495,13 @@ enum ClaudeModel {
   OPUS_4 = "claude-opus-4-20250514",
   SONNET_4 = "claude-sonnet-4-20250514",
   SONNET_3_7 = "claude-3-7-sonnet-20250219",
-  HAIKU_3_5 = "claude-3-5-haiku-20241022"
+  HAIKU_3_5 = "claude-3-5-haiku-20241022",
 }
 
 // Tool names
 enum ToolName {
   BASH = "Bash",
-  READ = "Read", 
+  READ = "Read",
   EDIT = "Edit",
   WRITE = "Write",
   GLOB = "Glob",
@@ -495,17 +514,32 @@ enum ToolName {
   NOTEBOOK_EDIT = "NotebookEdit",
   WEB_FETCH = "WebFetch",
   WEB_SEARCH = "WebSearch",
-  TASK = "Task"
+  TASK = "Task",
 }
 
 // File extensions for different content types
 const SUPPORTED_EXTENSIONS = {
   TEXT: [".txt", ".md", ".json", ".yaml", ".yml", ".toml"],
-  CODE: [".py", ".js", ".ts", ".tsx", ".jsx", ".java", ".cpp", ".c", ".h", ".rs", ".go", ".php", ".rb", ".swift"],
+  CODE: [
+    ".py",
+    ".js",
+    ".ts",
+    ".tsx",
+    ".jsx",
+    ".java",
+    ".cpp",
+    ".c",
+    ".h",
+    ".rs",
+    ".go",
+    ".php",
+    ".rb",
+    ".swift",
+  ],
   CONFIG: [".env", ".gitignore", ".dockerignore", ".editorconfig"],
   NOTEBOOK: [".ipynb"],
   IMAGE: [".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg"],
-  BINARY: [".pdf", ".zip", ".tar", ".gz", ".exe", ".dmg"]
+  BINARY: [".pdf", ".zip", ".tar", ".gz", ".exe", ".dmg"],
 } as const;
 ```
 
@@ -522,15 +556,15 @@ interface VersionMigration {
 const migrations: VersionMigration[] = [
   {
     fromVersion: "1.0.2",
-    toVersion: "1.0.3", 
+    toVersion: "1.0.3",
     migrate: (message: any) => {
       // Add new fields, transform existing data
       return {
         ...message,
-        newField: "defaultValue"
+        newField: "defaultValue",
       };
-    }
-  }
+    },
+  },
 ];
 
 function migrateMessage(message: any, targetVersion: string): BaseMessage {
@@ -555,13 +589,13 @@ interface ConversationError extends Error {
 
 enum ConversationErrorCode {
   INVALID_UUID = "INVALID_UUID",
-  ORPHANED_MESSAGE = "ORPHANED_MESSAGE", 
+  ORPHANED_MESSAGE = "ORPHANED_MESSAGE",
   DUPLICATE_UUID = "DUPLICATE_UUID",
   INVALID_TIMESTAMP = "INVALID_TIMESTAMP",
   MISSING_TOOL_RESULT = "MISSING_TOOL_RESULT",
   CIRCULAR_REFERENCE = "CIRCULAR_REFERENCE",
   UNSUPPORTED_VERSION = "UNSUPPORTED_VERSION",
-  CORRUPTED_DATA = "CORRUPTED_DATA"
+  CORRUPTED_DATA = "CORRUPTED_DATA",
 }
 ```
 

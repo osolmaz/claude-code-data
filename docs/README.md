@@ -106,8 +106,9 @@ Tools follow a request-response pattern:
 ### Cost Tracking
 
 Every assistant message includes:
+
 - Token usage breakdown (input/output/cache)
-- Response time in milliseconds  
+- Response time in milliseconds
 - Cost calculation in USD
 - Model information
 
@@ -139,26 +140,26 @@ Every assistant message includes:
 ### Loading a Conversation
 
 ```typescript
-import { readFileSync } from 'fs';
-import { BaseMessage, SummaryMessage } from './types';
+import { readFileSync } from "fs";
+import { BaseMessage, SummaryMessage } from "./types";
 
 function loadConversation(filePath: string): {
   summaries: SummaryMessage[];
   messages: BaseMessage[];
 } {
-  const lines = readFileSync(filePath, 'utf8').split('\n').filter(Boolean);
+  const lines = readFileSync(filePath, "utf8").split("\n").filter(Boolean);
   const summaries: SummaryMessage[] = [];
   const messages: BaseMessage[] = [];
-  
+
   for (const line of lines) {
     const entry = JSON.parse(line);
-    if (entry.type === 'summary') {
+    if (entry.type === "summary") {
       summaries.push(entry);
     } else {
       messages.push(entry);
     }
   }
-  
+
   return { summaries, messages };
 }
 ```
@@ -167,9 +168,9 @@ function loadConversation(filePath: string): {
 
 ```typescript
 function buildConversationTree(messages: BaseMessage[]): ConversationNode {
-  const messageMap = new Map(messages.map(m => [m.uuid, m]));
+  const messageMap = new Map(messages.map((m) => [m.uuid, m]));
   const children = new Map<string, BaseMessage[]>();
-  
+
   // Build parent-child relationships
   for (const message of messages) {
     if (message.parentUuid) {
@@ -179,11 +180,11 @@ function buildConversationTree(messages: BaseMessage[]): ConversationNode {
       children.get(message.parentUuid)!.push(message);
     }
   }
-  
+
   // Find root and build tree
-  const root = messages.find(m => m.parentUuid === null);
-  if (!root) throw new Error('No root message found');
-  
+  const root = messages.find((m) => m.parentUuid === null);
+  if (!root) throw new Error("No root message found");
+
   return buildNode(root, children);
 }
 ```
@@ -191,15 +192,24 @@ function buildConversationTree(messages: BaseMessage[]): ConversationNode {
 ### Calculating Conversation Stats
 
 ```typescript
-function calculateConversationStats(messages: BaseMessage[]): ConversationStats {
-  const assistantMessages = messages.filter(m => m.type === 'assistant');
-  
+function calculateConversationStats(
+  messages: BaseMessage[],
+): ConversationStats {
+  const assistantMessages = messages.filter((m) => m.type === "assistant");
+
   return {
     messageCount: messages.length,
     totalCost: assistantMessages.reduce((sum, m) => sum + m.costUSD, 0),
-    totalTokens: assistantMessages.reduce((sum, m) => sum + m.message.usage.output_tokens, 0),
-    averageResponseTime: assistantMessages.reduce((sum, m) => sum + m.durationMs, 0) / assistantMessages.length,
-    conversationDuration: new Date(messages[messages.length - 1].timestamp).getTime() - new Date(messages[0].timestamp).getTime()
+    totalTokens: assistantMessages.reduce(
+      (sum, m) => sum + m.message.usage.output_tokens,
+      0,
+    ),
+    averageResponseTime:
+      assistantMessages.reduce((sum, m) => sum + m.durationMs, 0) /
+      assistantMessages.length,
+    conversationDuration:
+      new Date(messages[messages.length - 1].timestamp).getTime() -
+      new Date(messages[0].timestamp).getTime(),
   };
 }
 ```

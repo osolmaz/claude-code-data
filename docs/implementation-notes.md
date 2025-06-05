@@ -29,12 +29,14 @@ Line 4: {"type": "user", "uuid": "msg-3", "parentUuid": "msg-2", ...}
 ```
 
 **Benefits:**
+
 - Atomic writes prevent corruption
 - Efficient for sequential access
 - Easy to backup and sync
 - Natural ordering preservation
 
 **Trade-offs:**
+
 - Updates require rewriting entire file
 - Memory usage scales with conversation length
 - No built-in indexing for random access
@@ -45,19 +47,21 @@ Projects are identified by their absolute filesystem paths, with encoding for sa
 
 ```typescript
 function encodeProjectPath(path: string): string {
-  return path.replace(/\//g, '-');
+  return path.replace(/\//g, "-");
 }
 
 function decodeProjectPath(encoded: string): string {
-  return encoded.replace(/^-/, '/').replace(/-/g, '/');
+  return encoded.replace(/^-/, "/").replace(/-/g, "/");
 }
 ```
 
 **Examples:**
+
 - `/Users/john/my-project` → `-Users-john-my-project`
 - `/home/user/app` → `-home-user-app`
 
 This encoding ensures:
+
 - Valid filenames across operating systems
 - Deterministic project directory names
 - No conflicts with actual project names containing hyphens
@@ -77,10 +81,10 @@ interface MessageGraph {
 function buildMessageGraph(messages: BaseMessage[]): MessageGraph {
   const nodes = new Map();
   const edges = new Map();
-  
+
   for (const message of messages) {
     nodes.set(message.uuid, message);
-    
+
     if (message.parentUuid) {
       if (!edges.has(message.parentUuid)) {
         edges.set(message.parentUuid, []);
@@ -88,7 +92,7 @@ function buildMessageGraph(messages: BaseMessage[]): MessageGraph {
       edges.get(message.parentUuid)!.push(message.uuid);
     }
   }
-  
+
   return { nodes, edges };
 }
 ```
@@ -150,7 +154,7 @@ Tool usage follows a specific pattern:
   }
 }
 
-// Tool result to assistant  
+// Tool result to assistant
 {
   type: "user",
   message: {
@@ -177,26 +181,33 @@ interface PermissionMatcher {
   deny: RegExp[];
 }
 
-function createPermissionMatcher(settings: PermissionSettings): PermissionMatcher {
-  const allow = settings.allow.map(pattern => globToRegex(pattern));
-  const deny = settings.deny.map(pattern => globToRegex(pattern));
+function createPermissionMatcher(
+  settings: PermissionSettings,
+): PermissionMatcher {
+  const allow = settings.allow.map((pattern) => globToRegex(pattern));
+  const deny = settings.deny.map((pattern) => globToRegex(pattern));
   return { allow, deny };
 }
 
-function isToolAllowed(toolName: string, args: any, matcher: PermissionMatcher): boolean {
+function isToolAllowed(
+  toolName: string,
+  args: any,
+  matcher: PermissionMatcher,
+): boolean {
   const toolCall = `${toolName}(${JSON.stringify(args)})`;
-  
+
   // Check deny patterns first
-  if (matcher.deny.some(regex => regex.test(toolCall))) {
+  if (matcher.deny.some((regex) => regex.test(toolCall))) {
     return false;
   }
-  
+
   // Check allow patterns
-  return matcher.allow.some(regex => regex.test(toolCall));
+  return matcher.allow.some((regex) => regex.test(toolCall));
 }
 ```
 
 **Example Patterns:**
+
 - `Bash(find:*)` - Allow any find command
 - `Read(/safe/path/*)` - Only allow reading from safe path
 - `Bash(rm:*)` - Explicitly deny dangerous rm commands
@@ -219,13 +230,14 @@ interface CostCalculation {
 
 function calculateCost(usage: TokenUsage, model: string): number {
   const rates = getModelRates(model);
-  
+
   return (
-    (usage.input_tokens * rates.input) +
-    (usage.output_tokens * rates.output) +
-    (usage.cache_creation_input_tokens * rates.cacheCreation) +
-    (usage.cache_read_input_tokens * rates.cacheRead)
-  ) / 1_000_000; // Convert from tokens to USD
+    (usage.input_tokens * rates.input +
+      usage.output_tokens * rates.output +
+      usage.cache_creation_input_tokens * rates.cacheCreation +
+      usage.cache_read_input_tokens * rates.cacheRead) /
+    1_000_000
+  ); // Convert from tokens to USD
 }
 ```
 
@@ -235,18 +247,22 @@ Response time tracking enables performance analysis:
 
 ```typescript
 interface PerformanceMetrics {
-  durationMs: number;        // Total response time
-  tokensPerSecond: number;   // Output tokens / (duration / 1000)
-  costEfficiency: number;    // Value metric: output_tokens / costUSD
+  durationMs: number; // Total response time
+  tokensPerSecond: number; // Output tokens / (duration / 1000)
+  costEfficiency: number; // Value metric: output_tokens / costUSD
 }
 
 function calculateMetrics(message: AssistantMessage): PerformanceMetrics {
-  const { durationMs, costUSD, message: { usage } } = message;
-  
+  const {
+    durationMs,
+    costUSD,
+    message: { usage },
+  } = message;
+
   return {
     durationMs,
     tokensPerSecond: (usage.output_tokens * 1000) / durationMs,
-    costEfficiency: usage.output_tokens / costUSD
+    costEfficiency: usage.output_tokens / costUSD,
   };
 }
 ```
@@ -261,27 +277,27 @@ Statsig evaluations are cached locally to reduce API calls:
 interface CacheStrategy {
   // Cache file per user hash to avoid conflicts
   filename: string; // `statsig.cached.evaluations.${userHash}`
-  
+
   // Timestamp-based invalidation
   lastModified: number;
   ttl: number; // Time to live in milliseconds
-  
+
   // Evaluation data
   data: StatsigEvaluation;
 }
 
 function getCachedEvaluation(userHash: string): StatsigEvaluation | null {
   const cacheFile = `statsig.cached.evaluations.${userHash}`;
-  const lastModFile = 'statsig.last_modified_time.evaluations';
-  
+  const lastModFile = "statsig.last_modified_time.evaluations";
+
   // Check if cache is still valid
   const lastModified = readTimestamp(lastModFile);
   const cacheAge = Date.now() - lastModified;
-  
+
   if (cacheAge > CACHE_TTL) {
     return null; // Cache expired
   }
-  
+
   return readEvaluation(cacheFile);
 }
 ```
@@ -299,17 +315,17 @@ interface FeatureManager {
 function initializeFeatures(evaluation: StatsigEvaluation): FeatureManager {
   const gates = new Map();
   const configs = new Map();
-  
+
   // Process feature gates
   for (const [id, gate] of Object.entries(evaluation.data.feature_gates)) {
     gates.set(gate.name, gate.value);
   }
-  
+
   // Process dynamic configs
   for (const [id, config] of Object.entries(evaluation.data.dynamic_configs)) {
     configs.set(config.name, config.value);
   }
-  
+
   return { gates, configs };
 }
 ```
@@ -327,11 +343,11 @@ interface TodoManager {
 
 function loadTodosForSession(sessionId: string): TodoItem[] {
   const todoFile = `.claude/todos/${sessionId}.json`;
-  
+
   if (fs.existsSync(todoFile)) {
-    return JSON.parse(fs.readFileSync(todoFile, 'utf8'));
+    return JSON.parse(fs.readFileSync(todoFile, "utf8"));
   }
-  
+
   return [];
 }
 
@@ -354,12 +370,12 @@ cancelled   cancelled   (final)
 ```typescript
 function isValidTransition(from: TodoStatus, to: TodoStatus): boolean {
   const validTransitions: Record<TodoStatus, TodoStatus[]> = {
-    pending: ['in_progress', 'cancelled'],
-    in_progress: ['completed', 'cancelled'],
+    pending: ["in_progress", "cancelled"],
+    in_progress: ["completed", "cancelled"],
     completed: [], // Final state
-    cancelled: []  // Final state
+    cancelled: [], // Final state
   };
-  
+
   return validTransitions[from].includes(to);
 }
 ```
@@ -388,10 +404,10 @@ const messageValidationRules: ValidationRule<BaseMessage>[] = [
     })
   },
   {
-    name: "valid-parent-reference", 
+    name: "valid-parent-reference",
     validate: (msg) => {
       if (msg.parentUuid === null) return { valid: true, errors: [] };
-      
+
       // Parent must exist in conversation
       const parentExists = /* check if parent exists */;
       return {
@@ -406,7 +422,7 @@ const messageValidationRules: ValidationRule<BaseMessage>[] = [
       // Messages must be chronologically ordered relative to parent
       const parentTimestamp = /* get parent timestamp */;
       const isAfterParent = new Date(msg.timestamp) > new Date(parentTimestamp);
-      
+
       return {
         valid: isAfterParent,
         errors: isAfterParent ? [] : ["Message timestamp before parent"]
@@ -421,35 +437,37 @@ const messageValidationRules: ValidationRule<BaseMessage>[] = [
 ```typescript
 function validateConversation(messages: BaseMessage[]): ValidationResult {
   const errors: string[] = [];
-  
+
   // Check for orphaned messages (invalid parent references)
-  const messageIds = new Set(messages.map(m => m.uuid));
+  const messageIds = new Set(messages.map((m) => m.uuid));
   for (const msg of messages) {
     if (msg.parentUuid && !messageIds.has(msg.parentUuid)) {
-      errors.push(`Orphaned message: ${msg.uuid} references missing parent ${msg.parentUuid}`);
+      errors.push(
+        `Orphaned message: ${msg.uuid} references missing parent ${msg.parentUuid}`,
+      );
     }
   }
-  
+
   // Check for duplicate UUIDs
   const uuidCounts = new Map<string, number>();
   for (const msg of messages) {
     uuidCounts.set(msg.uuid, (uuidCounts.get(msg.uuid) || 0) + 1);
   }
-  
+
   for (const [uuid, count] of uuidCounts) {
     if (count > 1) {
       errors.push(`Duplicate UUID: ${uuid} appears ${count} times`);
     }
   }
-  
+
   // Check for circular references
   if (hasCircularReferences(messages)) {
     errors.push("Circular reference detected in message chain");
   }
-  
+
   return {
     valid: errors.length === 0,
-    errors
+    errors,
   };
 }
 ```
@@ -462,10 +480,14 @@ function validateConversation(messages: BaseMessage[]): ValidationResult {
 interface ConversationLoader {
   // Load only summary for quick overview
   loadSummary(conversationId: string): Promise<SummaryMessage[]>;
-  
+
   // Load messages in chunks for large conversations
-  loadMessages(conversationId: string, offset: number, limit: number): Promise<BaseMessage[]>;
-  
+  loadMessages(
+    conversationId: string,
+    offset: number,
+    limit: number,
+  ): Promise<BaseMessage[]>;
+
   // Stream messages for real-time processing
   streamMessages(conversationId: string): AsyncIterable<BaseMessage>;
 }
@@ -474,21 +496,21 @@ class LazyConversationLoader implements ConversationLoader {
   async loadSummary(conversationId: string): Promise<SummaryMessage[]> {
     const file = `.claude/projects/${project}/${conversationId}.jsonl`;
     const summaries: SummaryMessage[] = [];
-    
+
     // Read only first few lines for summaries
     const rl = readline.createInterface({
-      input: fs.createReadStream(file)
+      input: fs.createReadStream(file),
     });
-    
+
     for await (const line of rl) {
       const entry = JSON.parse(line);
-      if (entry.type === 'summary') {
+      if (entry.type === "summary") {
         summaries.push(entry);
       } else {
         break; // Found first message, stop reading
       }
     }
-    
+
     return summaries;
   }
 }
@@ -514,7 +536,7 @@ function evictLRU(cache: ConversationCache): void {
   while (cache.cache.size >= cache.maxSize) {
     const oldestId = cache.lru.removeLast();
     const entry = cache.cache.get(oldestId);
-    
+
     if (entry) {
       cache.cache.delete(oldestId);
       console.log(`Evicted conversation ${oldestId} (${entry.size} bytes)`);
@@ -531,22 +553,18 @@ function evictLRU(cache: ConversationCache): void {
 function sanitizePath(userPath: string): string {
   // Resolve to absolute path
   const resolved = path.resolve(userPath);
-  
+
   // Ensure path is within allowed directories
-  const allowedRoots = [
-    os.homedir(),
-    '/tmp',
-    process.cwd()
-  ];
-  
-  const isAllowed = allowedRoots.some(root => 
-    resolved.startsWith(path.resolve(root))
+  const allowedRoots = [os.homedir(), "/tmp", process.cwd()];
+
+  const isAllowed = allowedRoots.some((root) =>
+    resolved.startsWith(path.resolve(root)),
   );
-  
+
   if (!isAllowed) {
     throw new Error(`Path ${resolved} is outside allowed directories`);
   }
-  
+
   return resolved;
 }
 ```
@@ -562,26 +580,26 @@ interface SandboxConfig {
 }
 
 async function executeBashCommand(
-  command: string, 
-  config: SandboxConfig
+  command: string,
+  config: SandboxConfig,
 ): Promise<ToolUseResult> {
   // Validate command against whitelist
-  const commandName = command.split(' ')[0];
+  const commandName = command.split(" ")[0];
   if (!config.allowedCommands.includes(commandName)) {
     throw new Error(`Command ${commandName} not allowed`);
   }
-  
+
   // Execute with timeout and resource limits
   const result = await spawn(command, {
     timeout: config.timeoutMs,
     cwd: config.workingDirectory,
-    maxBuffer: config.maxMemoryMB * 1024 * 1024
+    maxBuffer: config.maxMemoryMB * 1024 * 1024,
   });
-  
+
   return {
     stdout: result.stdout,
     stderr: result.stderr,
-    interrupted: result.killed
+    interrupted: result.killed,
   };
 }
 ```
@@ -606,28 +624,27 @@ interface Migration {
 
 async function migrateConversation(
   conversationPath: string,
-  plan: MigrationPlan
+  plan: MigrationPlan,
 ): Promise<void> {
   const backup = `${conversationPath}.backup`;
-  
+
   try {
     // Create backup
     await fs.copyFile(conversationPath, backup);
-    
+
     // Apply migrations
     let data = await readConversation(conversationPath);
-    
+
     for (const migration of plan.migrations) {
       console.log(`Applying migration: ${migration.description}`);
       data = migration.migrate(data);
     }
-    
+
     // Write migrated data
     await writeConversation(conversationPath, data);
-    
+
     // Remove backup on success
     await fs.unlink(backup);
-    
   } catch (error) {
     // Restore backup on failure
     if (await fs.exists(backup)) {

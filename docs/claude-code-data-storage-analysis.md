@@ -7,10 +7,12 @@ This document provides a comprehensive reverse engineering analysis of how Claud
 ## Directory Structure
 
 ### Root Level Files
+
 - `.claude.json` - Main configuration and global state file (924KB)
 - `.claude/` - Primary data directory containing all persistent storage
 
 ### .claude Directory Structure
+
 ```
 .claude/
 ├── ide/
@@ -37,6 +39,7 @@ This document provides a comprehensive reverse engineering analysis of how Claud
 ## Main Configuration File (.claude.json)
 
 ### Top-Level Structure
+
 The `.claude.json` file contains global application state and configuration:
 
 ```json
@@ -58,11 +61,14 @@ The `.claude.json` file contains global application state and configuration:
   "userID": "a6e0588335b350a8373cec1f126acb4d5a9d05c039deac5e201746f60d33e44f",
   "hasCompletedOnboarding": true,
   "lastOnboardingVersion": "1.0.3",
-  "projects": { /* Project configurations */ }
+  "projects": {
+    /* Project configurations */
+  }
 }
 ```
 
 ### Project Configuration Model
+
 Each project in the `projects` object follows this structure:
 
 ```typescript
@@ -98,18 +104,24 @@ interface PastedContent {
 ## Project Storage Structure
 
 ### Project Directory Naming
+
 Project directories use a path-encoding scheme where `/` characters are replaced with `-`:
+
 - `/Users/onur/tc/backend-api` → `-Users-onur-tc-backend-api`
 
 ### Conversation Files (JSONL Format)
+
 Each conversation is stored as a `.jsonl` file with the conversation's UUID as the filename.
 
 #### Conversation File Structure
+
 Conversations use JSON Lines format with each line representing either:
+
 1. Summary metadata
 2. Individual messages in the conversation thread
 
 #### Summary Entries
+
 ```json
 {
   "type": "summary",
@@ -119,7 +131,9 @@ Conversations use JSON Lines format with each line representing either:
 ```
 
 #### Message Entries
+
 All messages share common fields:
+
 ```typescript
 interface BaseMessage {
   parentUuid: string | null;
@@ -134,6 +148,7 @@ interface BaseMessage {
 ```
 
 #### User Messages
+
 ```typescript
 interface UserMessage extends BaseMessage {
   type: "user";
@@ -146,6 +161,7 @@ interface UserMessage extends BaseMessage {
 ```
 
 #### Assistant Messages
+
 ```typescript
 interface AssistantMessage extends BaseMessage {
   type: "assistant";
@@ -171,13 +187,14 @@ interface AssistantMessage extends BaseMessage {
 ```
 
 #### Content Types
+
 Assistant messages can contain various content types:
 
 ```typescript
-type ContentBlock = 
+type ContentBlock =
   | { type: "text"; text: string }
-  | { 
-      type: "tool_use"; 
+  | {
+      type: "tool_use";
       id: string;
       name: string;
       input: Record<string, any>;
@@ -185,6 +202,7 @@ type ContentBlock =
 ```
 
 #### Special Message Types
+
 - **Meta Messages**: `isMeta: true` for system-generated context messages
 - **Command Messages**: Messages containing `<command-name>`, `<command-message>`, and `<command-args>` for CLI interactions
 - **Command Output**: Messages with `<local-command-stdout>` containing command results
@@ -192,15 +210,11 @@ type ContentBlock =
 ## Settings and Configuration
 
 ### Local Settings (.claude/settings.local.json)
+
 ```json
 {
   "permissions": {
-    "allow": [
-      "Bash(find:*)",
-      "Bash(ls:*)",
-      "Bash(grep:*)",
-      "Bash(mkdir:*)"
-    ],
+    "allow": ["Bash(find:*)", "Bash(ls:*)", "Bash(grep:*)", "Bash(mkdir:*)"],
     "deny": []
   }
 }
@@ -211,19 +225,23 @@ This file manages tool permissions with granular control over allowed and denied
 ## Todo System
 
 ### Todo Storage Structure
+
 Todos are stored as individual JSON files in `.claude/todos/` with UUID filenames.
 
 #### Todo File Structure
+
 ```typescript
 interface TodoFile {
   content: string;
   status: "pending" | "in_progress" | "completed";
   priority: "high" | "medium" | "low";
   id: string;
-}[]
+}
+[];
 ```
 
 Example todo file:
+
 ```json
 [
   {
@@ -244,15 +262,18 @@ Example todo file:
 ## Feature Flags and Analytics
 
 ### Statsig Integration
+
 The `.claude/statsig/` directory contains cached feature flag evaluations and session tracking:
 
 #### Files:
+
 - `statsig.cached.evaluations.*` - Cached feature flag states
 - `statsig.last_modified_time.evaluations` - Timestamp for cache invalidation
 - `statsig.session_id.*` - Session tracking files
 - `statsig.stable_id.*` - Stable user identifier
 
 #### Evaluation Structure
+
 ```typescript
 interface StatsigEvaluation {
   source: "Network";
@@ -271,6 +292,7 @@ interface StatsigEvaluation {
 ## IDE Integration
 
 ### IDE Lock File (.claude/ide/18022.lock)
+
 ```json
 {
   "pid": 76135,
@@ -287,23 +309,27 @@ This file tracks active IDE connections and workspace state.
 ### Core Entities
 
 1. **User Identity**
+
    - SHA-256 hashed userID for privacy
    - Stable ID for analytics correlation
    - Session tracking across app restarts
 
 2. **Project Management**
+
    - Path-based project identification
    - Per-project tool permissions
    - Conversation history preservation
    - Context and configuration storage
 
 3. **Conversation Threading**
+
    - UUID-based message identification
    - Parent-child relationship tracking
    - Branch/sidechain support
    - Message metadata (timestamps, costs, duration)
 
 4. **Tool Usage Tracking**
+
    - Granular permission system
    - Usage analytics and optimization
    - Error tracking and debugging
@@ -316,18 +342,21 @@ This file tracks active IDE connections and workspace state.
 ## Storage Characteristics
 
 ### Performance Optimizations
+
 - **JSONL Format**: Append-only conversation storage for efficient writes
 - **File-per-conversation**: Parallel access and reduced lock contention
 - **Cached Evaluations**: Reduced network calls for feature flags
 - **Separate Todo Storage**: Independent todo management per session
 
 ### Data Integrity
+
 - **UUID-based identification**: Prevents ID collisions across distributed usage
 - **Immutable message history**: Append-only conversation logs
 - **Version tracking**: Schema evolution through version fields
 - **Timestamp precision**: Millisecond-accurate event ordering
 
 ### Privacy Considerations
+
 - **Hashed user identifiers**: No PII in primary identifiers
 - **Local-first storage**: All data stored locally, not in cloud
 - **Granular permissions**: User controls over tool access
@@ -336,23 +365,27 @@ This file tracks active IDE connections and workspace state.
 ## Technical Implementation Notes
 
 ### Message Threading
+
 - Conversations form directed acyclic graphs (DAGs) through parent-child relationships
 - Support for conversation branching and merging
 - Efficient traversal through UUID-based linking
 
 ### Cost Tracking
+
 - Per-message cost calculation in USD
 - Token usage breakdown (input, output, cache)
 - Performance metrics (duration, model used)
 - Aggregatable for usage analytics
 
 ### Tool Integration
+
 - Dynamic tool permission management
 - Command execution tracking
 - File system operation logging
 - Integration with external services (GitHub, etc.)
 
 ### Extensibility
+
 - Schema versioning for backwards compatibility
 - Plugin-based tool architecture
 - Configurable feature flags
